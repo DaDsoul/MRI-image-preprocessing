@@ -2,5 +2,6 @@
     "umc_names":["t2_tirm", "t1_se_sag", "t1_mpr_tra", "t2_tse_tra"],
     "actual_names":[ "flair", "t1", "t1ce", "t2"],
     "data_path":"/home/alisher/Documents/data/umc/sep10/hd-bet-resampling",
+    "processed_data_path":"/home/alisher/Documents/data/umc/sep10/processed",
     "target_folder":"converted"
 }
