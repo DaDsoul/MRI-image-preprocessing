@@ -18,8 +18,6 @@ def main():
 
 
     for (index, id) in enumerate(history.keys()): 
-        # logger.info(index)
-        # logger.info(f"{id} - {history[id]}")
         if (len(history[id]) > 1):
             logger.info(f"{id} - {history[id]}")
 

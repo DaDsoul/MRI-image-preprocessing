@@ -2,6 +2,8 @@
     "umc_names":["t2_tirm", "t1_se_sag", "t1_mpr_tra", "t2_tse_tra"],
     "actual_names":[ "flair", "t1", "t1ce", "t2"],
     "data_path":"/home/alisher/Documents/data/umc/sep10/hd-bet-resampling",
+    "registration_path":"/home/alisher/Documents/data/umc/test",
     "processed_data_path":"/home/alisher/Documents/data/umc/sep10/processed",
+    "brats_flair_sequence_path":"/home/alisher/Documents/data/brats/MICCAI_BraTS_2018_Data_Training/HGG/Brats18_2013_2_1/Brats18_2013_2_1_flair.nii.gz",
     "target_folder":"converted"
 }
