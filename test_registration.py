@@ -137,6 +137,10 @@ def transform(fixed_image_path, moving_image_path, output_image_path, option = 0
 
 
 
+def get_mri_sequence(mri_path):
+    image = nib.load(mri_path)
+    return image
+
 
 '''
     Takes the paths to the sequences of some subject
