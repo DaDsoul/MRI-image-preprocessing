@@ -1,116 +1,43 @@
-import itk
-import sys
+import numpy as np
 
-from distutils.version import StrictVersion as VS
-if VS(itk.Version.GetITKVersion()) < VS("4.9.0"):
-    print("ITK 4.9.0 is required.")
-    sys.exit(1)
 
-if len(sys.argv) != 6:
-    print("Usage: " + sys.argv[0] + " <fixedImageFile> <movingImageFile> "
-          "<outputImagefile> <differenceImageAfter> <differenceImageBefore>")
-    sys.exit(1)
 
-fixedImageFile = sys.argv[1]
-movingImageFile = sys.argv[2]
-outputImageFile = sys.argv[3]
-differenceImageAfterFile = sys.argv[4]
-differenceImageBeforeFile = sys.argv[5]
+def main():
 
-PixelType = itk.ctype('float')
 
-fixedImage = itk.imread(fixedImageFile, PixelType)
-movingImage = itk.imread(movingImageFile, PixelType)
 
-Dimension = fixedImage.GetImageDimension()
-FixedImageType = itk.Image[PixelType, Dimension]
-MovingImageType = itk.Image[PixelType, Dimension]
+        print(compute_patch_indices((200,100,100), (64, 64, 64), 0,(16,16,16) ))
 
-TransformType = itk.TranslationTransform[itk.D, Dimension]
-initialTransform = TransformType.New()
 
-optimizer = itk.RegularStepGradientDescentOptimizerv4.New(
-        LearningRate=4,
-        MinimumStepLength=0.001,
-        RelaxationFactor=0.5,
-        NumberOfIterations=200)
 
-metric = itk.MeanSquaresImageToImageMetricv4[
-    FixedImageType, MovingImageType].New()
+'''
+    :param patch_shape: Shape of the data to return with the generator. If None, the whole image will be returned.
+    (default is None)
+    
+    :param validation_patch_overlap: Number of pixels/voxels that will be overlapped in the validation data. (requires
+    patch_shape to not be None)
+'''
 
-registration = itk.ImageRegistrationMethodv4.New(FixedImage=fixedImage,
-        MovingImage=movingImage,
-        Metric=metric,
-        Optimizer=optimizer,
-        InitialTransform=initialTransform)
+def compute_patch_indices(image_shape, patch_size, overlap, start=None):
+    if isinstance(overlap, int):
+        overlap = np.asarray([overlap] * len(image_shape))
+    if start is None:
+        n_patches = np.ceil(image_shape / (patch_size - overlap))
+        overflow = (patch_size - overlap) * n_patches - image_shape + overlap
+        start = -np.ceil(overflow/2)
+        print(start, image_shape, patch_size)
+    elif isinstance(start, int):
+        start = np.asarray([start] * len(image_shape))
+    stop = image_shape + start
+    step = patch_size - overlap
+    return get_set_of_patch_indices(start, stop, step)
 
-movingInitialTransform = TransformType.New()
-initialParameters = movingInitialTransform.GetParameters()
-initialParameters[0] = 0
-initialParameters[1] = 0
-movingInitialTransform.SetParameters(initialParameters)
-registration.SetMovingInitialTransform(movingInitialTransform)
+def get_set_of_patch_indices(start, stop, step):
+    return np.asarray(np.mgrid[start[0]:stop[0]:step[0], start[1]:stop[1]:step[1],
+                               start[2]:stop[2]:step[2]].reshape(3, -1).T, dtype=np.int)
 
-identityTransform = TransformType.New()
-identityTransform.SetIdentity()
-registration.SetFixedInitialTransform(identityTransform)
 
-registration.SetNumberOfLevels(1)
-registration.SetSmoothingSigmasPerLevel([0])
-registration.SetShrinkFactorsPerLevel([1])
 
-registration.Update()
 
-transform = registration.GetTransform()
-finalParameters = transform.GetParameters()
-translationAlongX = finalParameters.GetElement(0)
-translationAlongY = finalParameters.GetElement(1)
-
-numberOfIterations = optimizer.GetCurrentIteration()
-
-bestValue = optimizer.GetValue()
-
-print("Result = ")
-print(" Translation X = " + str(translationAlongX))
-print(" Translation Y = " + str(translationAlongY))
-print(" Iterations    = " + str(numberOfIterations))
-print(" Metric value  = " + str(bestValue))
-
-CompositeTransformType = itk.CompositeTransform[itk.D, Dimension]
-outputCompositeTransform = CompositeTransformType.New()
-outputCompositeTransform.AddTransform(movingInitialTransform)
-outputCompositeTransform.AddTransform(registration.GetModifiableTransform())
-
-resampler = itk.ResampleImageFilter.New(Input=movingImage,
-        Transform=outputCompositeTransform,
-        UseReferenceImage=True,
-        ReferenceImage=fixedImage)
-resampler.SetDefaultPixelValue(100)
-
-OutputPixelType = itk.ctype('unsigned char')
-OutputImageType = itk.Image[OutputPixelType, Dimension]
-
-caster = itk.CastImageFilter[FixedImageType,
-        OutputImageType].New(Input=resampler)
-
-writer = itk.ImageFileWriter.New(Input=caster, FileName=outputImageFile)
-writer.SetFileName(outputImageFile)
-writer.Update()
-
-difference = itk.SubtractImageFilter.New(Input1=fixedImage,
-        Input2=resampler)
-
-intensityRescaler = itk.RescaleIntensityImageFilter[FixedImageType,
-        OutputImageType].New(
-            Input=difference,
-            OutputMinimum=itk.NumericTraits[OutputPixelType].min(),
-            OutputMaximum=itk.NumericTraits[OutputPixelType].max())
-
-resampler.SetDefaultPixelValue(1)
-writer.SetInput(intensityRescaler.GetOutput())
-writer.SetFileName(differenceImageAfterFile)
-writer.Update()
-
-resampler.SetTransform(identityTransform)
-writer.SetFileName(differenceImageBeforeFile)
-writer.Update()
+if __name__ == "__main__":
+        main()

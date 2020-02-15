@@ -6,6 +6,9 @@ from utils.custom_logger import Logger
 import pandas as pd
 # from model.model import build_model
 from test_registration import get_mri_sequence
+from data_loader.data import DataGenerator
+from model.trainer import Trainer
+
 
 CHANNELS_NUM = 4
 
@@ -27,12 +30,29 @@ def main():
     #         logger.info(f"{id} - {history[id]}")
 
     
-    mri_image = get_mri_sequence(config.brats_flair_sequence_path)
-    input_shape = (CHANNELS_NUM,) + mri_image.shape
+    # mri_image = get_mri_sequence(config.brats_flair_sequence_path)
+    # input_shape = (CHANNELS_NUM,) + mri_image.shape
     
-    print(mri_image.get_data())
+    # print(mri_image.get_data())
+
+    data_generator = DataGenerator(config)
+
+    main_path = config.main_path
+
+    trainer = Trainer(config)
+
+    indices = trainer.create_patch_index_list([3,4,5], config.image_shape, [10,10,10])
     
     
+    #:param patch_shape: Shape of the patch to add to the data lists. If None, the whole image will be added.
+
+    for index in indices: 
+        print(index)
+        print("*"*30)
+    # train, test = data_generator.validation_split(2, f"{main_path}/data/train_keys.csv", f"{main_path}/data/validation_kes.csv")
+    # print(train.shape)
+    # print(test.shape)
+
     # mri_model = build_model(input_shape, CHANNELS_NUM)
 
 
