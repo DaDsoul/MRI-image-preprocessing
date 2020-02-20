@@ -8,7 +8,17 @@
     "brats_data_path_training_hgg":"/home/alisher/Documents/data/brats/MICCAI_BraTS_2019_Data_Training/HGG", 
     "brats_data_path_training_lgg":"/home/alisher/Documents/data/brats/MICCAI_BraTS_2019_Data_Training/LGG",
     "main_path":"/home/alisher/Desktop/prep/MRI-image-preprocessing",
-    "image_shape":[240, 240, 155],
+    "image_shape":[80,96,64],
     "target_folder":"converted", 
-    "data_set":"data.h5"
+    "data_set":"data_mew.h5", 
+    "label_num":3, 
+    "labels":[1,2,4], 
+    "patch_shape":null,
+    "batch_size":1, 
+    "patch_start_offset":[0,0,0], 
+    "model_path":"/home/alisher/Desktop/prep/MRI-image-preprocessing/data/model.h5", 
+    "epochs":100,
+    "initial_learning_rate":0.00001,
+    "learning_rate_drop":0.5,
+    "early_stop":50
 }

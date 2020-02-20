@@ -5,6 +5,11 @@ import numpy as np
 import os
 from random import shuffle
 import pandas as pd
+from nilearn.image import crop_img
+from scipy.ndimage import zoom
+
+
+
 
 class DataGenerator: 
 
@@ -26,13 +31,17 @@ class DataGenerator:
             self.fill_data(hgg_data,  self.data_set_path, self.config.image_shape, samples_num)
         
 
-    def write_image_data_to_file(self, image_files, data_storage, truth_storage, affine_storage, truth_dtype, channels = 4):
+    def write_image_data_to_file(self, image_files, data_storage, truth_storage, truth_dtype, channels = 4, crop = True):
         for set_of_files in os.listdir(image_files):
-            images = self.read_images(f"{image_files}/{set_of_files}")
-            subject_data = [image.get_data() for image in images]
-
-            self.add_data_to_storage(data_storage, truth_storage, affine_storage, subject_data, images[0].affine, channels,
+            images = self.read_images(f"{image_files}/{set_of_files}", crop = crop)
+            subject_data = [image for image in images]
+            print("-"*30)
+            print(f"Adding {set_of_files}")
+            self.add_data_to_storage(data_storage, truth_storage, subject_data, channels,
                                 truth_dtype)
+            print(f"Added {set_of_files}")
+            print("-"*30)
+
         
         print("Writing images is finished")
         return data_storage, truth_storage
@@ -54,7 +63,7 @@ class DataGenerator:
     
 
     # param images_files - path to the mri image folder
-    def read_images(self, path_to_subject, crop = None):
+    def read_images(self, path_to_subject, crop = False, new_shape = [80,96,64]):
 
         index_truth = -1
         subject_sequences = list()  
@@ -64,10 +73,24 @@ class DataGenerator:
         for index, sequence in enumerate(paths):
             if "seg" in sequence: 
                 index_truth = index
-            subject_sequences.append(nib.load(f"{path_to_subject}/{sequence}"))
-        
-        # swap to put the seg to the last elem        # self.fill_data(hgg_data, f"{self.config.main_path}/data/{data_name}", self.config.image_shape, samples_num)
+            
+            
+            image = nib.load(f"{path_to_subject}/{sequence}")
+            image_matrix = image.get_data()
+            
 
+            if crop: 
+                orig_shape = image_matrix.shape
+
+                factors = ( new_shape[0]/orig_shape[0],
+                            new_shape[1]/orig_shape[1], 
+                            new_shape[2]/orig_shape[2] )
+
+                image_matrix = zoom(image_matrix, factors,  mode = "constant")
+
+                
+            subject_sequences.append(image_matrix)
+        
             assert Exception(f"No truth label provided in {path_to_subject}")
         
         last_index = len(paths) - 1
@@ -98,6 +121,7 @@ class DataGenerator:
 
 
     def fill_data(self, image_files, out_file, image_shape, samples_num, channels =4, truth_dtype=np.uint8, subject_ids=None, normalize=True):
+
         
         try: 
             hdf_file, data_storage, truth_storage, affine_storage = self.create_data_file(out_file, n_samples = samples_num, image_shape = image_shape)
@@ -105,7 +129,7 @@ class DataGenerator:
             os.remove(out_file)
             raise e
 
-        self.write_image_data_to_file(image_files, data_storage, truth_storage, affine_storage, truth_dtype, channels)
+        self.write_image_data_to_file(image_files, data_storage, truth_storage, truth_dtype, channels)
 
         if normalize:
             self.normalize_data_storage(data_storage)
@@ -116,10 +140,10 @@ class DataGenerator:
 
 
     @staticmethod
-    def add_data_to_storage(data_storage, truth_storage, affine_storage, subject_data, affine, channels, truth_dtype):
+    def add_data_to_storage(data_storage, truth_storage, subject_data, channels, truth_dtype):
         data_storage.append(np.asarray(subject_data[:channels])[np.newaxis])
         truth_storage.append(np.asarray(subject_data[channels], dtype=truth_dtype)[np.newaxis][np.newaxis])
-        affine_storage.append(np.asarray(affine)[np.newaxis])
+        # affine_storage.append(np.asarray(affine)[np.newaxis])
 
 
     # create pytable 
@@ -153,12 +177,14 @@ class DataGenerator:
         return data
 
 
-    #splits the data into the validation and training sets
+    #splits the data into the validation and training sets, if already exists returns the indices 
     @staticmethod
-    def validation_split(data_file, train_path_keys, validation_path_keys, data_split = 0.8):
+    def validation_split(train_path_keys, validation_path_keys, data_file = None, data_split = 0.8):
 
         if not os.path.exists(train_path_keys):
             print("Creating indexes for training and validation sets")
+            if data_split is None: 
+                assert Exception("The reference to the data is needed")
             indices = list(range(data_file.root.data.shape[0]))
             shuffle(indices)
             training_end_index = int(len(indices)*data_split)
@@ -166,14 +192,7 @@ class DataGenerator:
             for_validation_indices = indices[training_end_index:]
             pd.DataFrame({"indices":for_training_indices}).to_csv(train_path_keys)
             pd.DataFrame({"indices":for_validation_indices}).to_csv(validation_path_keys)
-            
             return for_training_indices, for_validation_indices
         else:
-
             return pd.read_csv(train_path_keys)["indices"].to_numpy(), pd.read_csv(validation_path_keys)["indices"].to_numpy()
             
-    
-    
-        
-
-   
