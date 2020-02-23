@@ -9,75 +9,176 @@ import numpy as np
 from utils.config import get_config
 import re
 
+
+
+# global values 
+umc_names = ["t2_tirm", "t1_se_sag", "t1_mpr_tra", "t2_tse_tra"]
+actual_names = [ "flair", "t1", "t1ce", "t2"]
+
 def main():
-    print(sys.argv[0])
-    
+
+    test = False
+
     config, _ = get_config(os.path.abspath('config.json'))
-    image_path = config.data_path
-    PARTICULAR_SUBJECT = 10 
-    PARTICULAR_FOLDER = "extracted"
-    subject_path = f"{image_path}/{PARTICULAR_SUBJECT}/{PARTICULAR_FOLDER}"
 
-    subject_sequences, sequence_names = retrive_subject_sequences(subject_path)
+    if test: 
 
-    # the path to BRATS as the fixed image 
-    fixed_image_path = config.brats_flair_sequence_path
-
-    # moving images of a particular subject 
-    moving_images = subject_sequences
-
-    for path in moving_images: 
-        # check the path validity of each sequence
-        assert os.path.exists(path)
-
-
-    # path to the registration folder
-    registered_image_path = f"{config.registration_path}/{PARTICULAR_SUBJECT}"
-
-    if not os.path.exists(registered_image_path):
-        os.mkdir(registered_image_path)
-
-    '''
-        Example of how we applied rigid registration 
-
-        B - BRATS
-        s,s1,s2 - shapes of sequences
-
-        Fixed    
-          B         T1  -> T1
-          s         s1     s
-
-          T1        F   -> F
-          s         s2     s
-
-
-
-        Just to note: T2 image in Subject 10 is very poor
         
-        and so on
-    '''
+        print(sys.argv[0])
+        
+        image_path = config.data_path
+        PARTICULAR_SUBJECT = 10 
+        PARTICULAR_FOLDER = "extracted"
+        subject_path = f"{image_path}/{PARTICULAR_SUBJECT}/{PARTICULAR_FOLDER}"
+        fixed_image_path = config.brats_t1c_sequence_path
+        subject_sequences, sequence_names = retrive_subject_sequences(subject_path)
 
-    # # just to show the names of retrieved sequences
-    # print(subject_sequences)
-    # print(sequence_names)
+        # the path to BRATS a
+        # moving images of a particular subject 
+        moving_images = subject_sequences
 
-    for (index, moving_image) in enumerate(moving_images): 
-
-        sequence = sequence_names[index]
-        output_image = f"{registered_image_path}/{sequence}"
-        transform(fixed_image_path, moving_image, output_image)
-        transform(fixed_image_path, moving_image, output_image, 2)
-        fixed_image_path = output_image
-        print(f"Complete registration for {moving_image}")
+        for path in moving_images: 
+            # check the path validity of each sequence
+            assert os.path.exists(path)
 
 
-    # show the shapes of sequences folder
-    # for sequence in sequence_names:
-    #     path = f"{registered_image_path}/{sequence}"
-    #     n_fixed = nib.load(path)
-    #     print(f"shape of {sequence} is {n_fixed.shape}")
+        # path to the registration folder
+        registered_image_path = f"{config.registration_path}/{PARTICULAR_SUBJECT}"
+
+        if not os.path.exists(registered_image_path):
+            os.mkdir(registered_image_path)
+
+        '''
+            Example of how we applied rigid registration 
+
+            B - BRATS
+            s,s1,s2 - shapes of sequences
+
+            Fixed    
+            B         T1  -> T1
+            s         s1     s
+
+            T1        F   -> F
+            s         s2     s
+
+
+
+            Just to note: T2 image in Subject 10 is very poor
+            
+            and so on
+        '''
+
+        # # just to show the names of retrieved sequences
+        # print(subject_sequences)
+        # print(sequence_names)
+
+        for (index, moving_image) in enumerate(moving_images): 
+
+            sequence = sequence_names[index]
+            output_image = f"{registered_image_path}/{sequence}"
+            transform(fixed_image_path, moving_image, output_image)
+            transform(fixed_image_path, moving_image, output_image, 2)
+            fixed_image_path = output_image
+            print(f"Complete registration for {moving_image}")
+
+
+        # show the shapes of sequences folder
+        # for sequence in sequence_names:
+        #     path = f"{registered_image_path}/{sequence}"
+        #     n_fixed = nib.load(path)
+        #     print(f"shape of {sequence} is {n_fixed.shape}")
+
+    else:
+
+        full_process(config.brats_t1c_sequence_path)
 
     return
+
+
+
+
+
+def full_process(fixed_image_path, path = "/home/alisher/Documents/data/umc/umc_10_09_benign/processed", extracted_folder = "extracted", converted_folder = "converted", reg_name = "registered_v2"):
+
+    global umc_names, actual_names
+
+    reference_image_path = fixed_image_path
+
+    for folder in os.listdir(path): 
+
+        patient_path = f'{path}/{folder}/{extracted_folder}'
+
+        # path to a subject in the reg_name folder 
+        if (not os.path.exists(f'{path}/{folder}/{reg_name}')):
+                os.mkdir(f'{path}/{folder}/{reg_name}')
+        
+        # path to the registration folder
+        registered_image_path = f'{path}/{folder}/{reg_name}'
+
+        if not os.path.exists(patient_path): 
+            os.mkdir(patient_path)
+
+        print(patient_path)
+
+        subject_sequences, sequence_names = retrive_subject_sequences(patient_path, None)
+
+        is_skull_stripped = True
+
+        if (len(sequence_names) == 0 or len(subject_sequences) == 0):
+            print("HERE")
+            is_skull_stripped = False
+
+        if not is_skull_stripped: 
+            
+            converted_path = f'{path}/{folder}/{converted_folder}'
+            
+            converted = []
+            index = 0 
+
+            print(f"Patient {folder}")
+
+            for converted in os.listdir(converted_path): 
+                for(index, umc_name) in enumerate(umc_names):    
+                    if "nii.gz" in converted and umc_name in converted:  
+
+                        actual_name = actual_names[index]                      
+                        skull_stripped_path = f"{patient_path}/{folder}_{actual_name}.nii.gz"
+
+                        if os.path.exists(skull_stripped_path): continue
+
+                        hd_bet_extraction(f'{converted_path}/{converted}', skull_stripped_path)
+        
+        if len(sequence_names) == 0 :
+            subject_sequences, sequence_names = retrive_subject_sequences(patient_path, "")
+        
+        for (index, moving_image) in enumerate(subject_sequences):
+            
+            sequence = sequence_names[index]
+            output_image = f"{registered_image_path}/{sequence}"
+            transform(reference_image_path, moving_image, output_image)
+            transform(reference_image_path, moving_image, output_image, 2)
+            reference_image_path = output_image
+            print(f"Complete registration for {moving_image}")
+
+        reference_image_path = fixed_image_path
+    
+    return 
+
+
+
+
+# by defualt hdbet is used
+def hd_bet_extraction(image_path, skull_stripped_path):
+    
+    try:
+        os.system(f"hd-bet -i {image_path} -o {skull_stripped_path}")
+        print(f"STRIPPED SUCCESFULLY for {image_path}")
+    except: 
+        assert Exception(f"Not possible to skull strip this subject, check the file {image_path}")
+
+    
+
+
     
 
 '''
@@ -154,7 +255,7 @@ def retrive_subject_sequences(path, sequence_to_ignore = "t2"):
     sequences = []
 
     for (_, sequence) in enumerate(os.listdir(path)):
-        if ("mask" in sequence) or (sequence_to_ignore in sequence):
+        if ("mask" in sequence) or (not sequence_to_ignore is None and sequence_to_ignore in sequence):
             continue
         path_sequences.append(f"{path}/{sequence}")
         sequences.append(sequence)

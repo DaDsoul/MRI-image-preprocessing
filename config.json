@@ -4,7 +4,7 @@
     "data_path":"/home/alisher/Documents/data/umc/sep10/hd-bet-resampling",
     "registration_path":"/home/alisher/Documents/data/umc/test",
     "processed_data_path":"/home/alisher/Documents/data/umc/sep10/processed",
-    "brats_flair_sequence_path":"/home/alisher/Documents/data/brats/MICCAI_BraTS_2018_Data_Training/HGG/Brats18_2013_2_1/Brats18_2013_2_1_flair.nii.gz",
+    "brats_t1c_sequence_path":"/home/alisher/Documents/data/brats/MICCAI_BraTS_2018_Data_Training/HGG/Brats18_2013_2_1/Brats18_2013_2_1_t1ce.nii.gz",
     "brats_data_path_training_hgg":"/home/alisher/Documents/data/brats/MICCAI_BraTS_2019_Data_Training/HGG", 
     "brats_data_path_training_lgg":"/home/alisher/Documents/data/brats/MICCAI_BraTS_2019_Data_Training/LGG",
     "main_path":"/home/alisher/Desktop/prep/MRI-image-preprocessing",
