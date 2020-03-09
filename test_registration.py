@@ -74,9 +74,6 @@ def main():
             and so on
         '''
 
-        # # just to show the names of retrieved sequences
-        # print(subject_sequences)
-        # print(sequence_names)
 
         for (index, moving_image) in enumerate(moving_images): 
 
@@ -94,7 +91,7 @@ def main():
         #convert_nii(new_path=new_path)
         # skull stripping and rigid registration
         #full_process(fixed_image_path = config.brats_t1c_sequence_path, path = new_path)
-        copy_files_to_dest()
+        # copy_files_to_dest()
 
     return
 

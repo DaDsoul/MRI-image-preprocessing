@@ -42,24 +42,23 @@ class Trainer:
     # def add_data(self, x_list, y_list, data_file, index, patch_shape, augment = False):
 
     def get_number_of_patches(self, data_file, index_list, patch_shape=None, patch_start_offset=None):
-        return len(index_list)
 
-        # if patch_shape:
-        #     print("STARTED COUNT OF SLICES")
-        #     index_list = self.create_patch_index_list(index_list, data_file.root.data.shape[-3:], patch_shape, patch_start_offset)
-        #     count = 0
-        #     for index in index_list:
-        #         print(f"Adding data for slice -{index}")
-        #         x_list = list()
-        #         y_list = list()
-        #         self.add_data(x_list, y_list, data_file, index, patch_shape=patch_shape)
-        #         if len(x_list) > 0:
-        #             count += 1
+        if patch_shape:
+            print("STARTED COUNT OF SLICES")
+            index_list = self.create_patch_index_list(index_list, data_file.root.data.shape[-3:], patch_shape, patch_start_offset)
+            count = 0
+            for index in index_list:
+                print(f"Adding data for slice -{index}")
+                x_list = list()
+                y_list = list()
+                self.add_data(x_list, y_list, data_file, index, patch_shape=patch_shape)
+                if len(x_list) > 0:
+                    count += 1
 
-        #     print("FINISHED COUNT OF SLICES ")
-        #     return count
-        # else:
-        #     return len(index_list)
+            print("FINISHED COUNT OF SLICES ")
+            return count
+        else:
+            return len(index_list)
 
 
     @staticmethod
@@ -138,18 +137,18 @@ class Trainer:
         x = np.asarray(x_list)
         y = np.asarray(y_list)
 
-        print(f"X_SHAPE {x.shape}")
-        print(f"Y_SHAPE_BEFORE {y.shape}")
+        # print(f"X_SHAPE {x.shape}")
+        # print(f"Y_SHAPE_BEFORE {y.shape}")
 
         new_shape = [y.shape[0], n_labels] + list(y.shape[2:])
         new_y = np.zeros(new_shape, np.int8)
 
-        print(f"Y_SHAPE_AFTER {new_y.shape}")
+        # print(f"Y_SHAPE_AFTER {new_y.shape}")
 
         for label in range(n_labels):
             new_y[:, label][y[0] == labels[label]] = 1
 
-        return x, [x, new_y]
+        return x, new_y
 
 
 
@@ -219,14 +218,8 @@ class Trainer:
     def create_patch_index_list(self, indices, image_shape, patch_shape, patch_start_offet = None):
 
         patch_index = list()
-        print("*"*31)
-        print("INDICES")
-        print(indices)
-        print("*"*31)
 
         for index in indices:
-            print(f"Creating slices for subject {index}")
-            print("-"*31)
             if patch_start_offet is not None:
                 start_offset = np.negative(tuple([np.random.choice(patch_start_offet[index] + 1) for index in range(len(patch_start_offet))]))
                 patches = self.compute_patch_indices(image_shape, patch_shape, start_offset)
@@ -237,7 +230,6 @@ class Trainer:
             # extend add each input element, treating it seperately
             patch_index.extend(itertools.product([index], patches))
 
-        print("Slices are created for listed subjects")
 
         return patch_index
 
