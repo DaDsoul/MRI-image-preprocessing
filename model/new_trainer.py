@@ -1,10 +1,11 @@
 import numpy as np
 import keras
 import itertools
+import random
 
 class DataGeneratorNew(keras.utils.Sequence):
 
-    def __init__(self, list_IDs, data_file, n_labels, labels, image_shape = (144,144,144),patch_shape = [64,64,64], patch_start_offset = (0,0,0),batch_size=32, dim=(32,32,32), shuffle=True):
+    def __init__(self, list_IDs, data_file, n_labels, labels, image_shape = (144,144,144),patch_shape = None, patch_start_offset = (0,0,0),batch_size=32, dim=(32,32,32), shuffle=True):
         self.dim = dim
         self.batch_size = batch_size
         self.list_IDs = list_IDs
@@ -19,8 +20,6 @@ class DataGeneratorNew(keras.utils.Sequence):
 
 
     def __len__(self):
-        'Denotes the number of batches per epoch'
-
         if not self.patch_shape:
             return int(np.floor(len(self.list_IDs) / self.batch_size))
         else: 
@@ -91,7 +90,7 @@ class DataGeneratorNew(keras.utils.Sequence):
                                start[2]:stop[2]:step[2]].reshape(3, -1).T, dtype=np.int)
         
 
-    def create_patch_index_list(self, indices, image_shape, patch_shape, patch_start_offet = None):
+    def create_patch_index_list(self, indices, image_shape, patch_shape = None, patch_start_offet = None):
 
         patch_index = list()
 
@@ -144,9 +143,17 @@ class DataGeneratorNew(keras.utils.Sequence):
 
         return x, y 
 
-    def add_data(self, x_list, y_list, data_file, index, patch_shape, augment = False):
+    def add_data(self, x_list, y_list, data_file, index, patch_shape = None, augment = False, permute = True):
 
         data, truth = self.get_data_from_file(data_file, index, patch_shape)
+
+
+        print(data.shape)
+        print(truth.shape)
+        
+        if patch_shape and permute: 
+            data, truth = self.random_permutation_x_y(data, truth[np.newaxis])
+
 
         x_list.append(data)
         y_list.append(truth)
@@ -211,3 +218,53 @@ class DataGeneratorNew(keras.utils.Sequence):
         data = np.pad(data, pad_args, mode="edge")
         patch_index += pad_before
         return data, patch_index
+
+    def random_permutation_x_y(self, x_data, y_data):
+        """
+        Performs random permutation on the data.
+        :param x_data: numpy array containing the data. Data must be of shape (n_modalities, x, y, z).
+        :param y_data: numpy array containing the data. Data must be of shape (n_modalities, x, y, z).
+        :return: the permuted data
+        """
+        key = self.random_permutation_key()
+
+        return self.permute_data(x_data, key), self.permute_data(y_data, key)
+
+    @staticmethod
+    def generate_permutation_keys():
+        return set(itertools.product(itertools.combinations_with_replacement(range(2), 2), range(2), range(2), range(2), range(2)))
+
+    def random_permutation_key(self):
+        """
+        Generates and randomly selects a permutation key. See the documentation for the
+        "generate_permutation_keys" function.
+        """
+        return random.choice(list(self.generate_permutation_keys()))
+
+    @staticmethod
+    def permute_data(data, key):
+        """
+        Permutes the given data according to the specification of the given key. Input data
+        must be of shape (n_modalities, x, y, z).
+        Input key is a tuple: (rotate_y, rotate_z), flip_x, flip_y, flip_z, transpose)
+        As an example, ((0, 1), 0, 1, 0, 1) represents a permutation in which the data is
+        rotated 90 degrees around the z-axis, then reversed on the y-axis, and then
+        transposed.
+        """
+        data = np.copy(data)
+        (rotate_y, rotate_z), flip_x, flip_y, flip_z, transpose = key
+
+        if rotate_y != 0:
+            data = np.rot90(data, rotate_y, axes=(1, 3))
+        if rotate_z != 0:
+            data = np.rot90(data, rotate_z, axes=(2, 3))
+        if flip_x:
+            data = data[:, ::-1]
+        if flip_y:
+            data = data[:, :, ::-1]
+        if flip_z:
+            data = data[:, :, :, ::-1]
+        # if transpose:
+        #     for i in range(data.shape[0]):
+        #         data[i] = data[i].T
+        return data

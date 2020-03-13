@@ -31,9 +31,9 @@ class DataGenerator:
             self.fill_data(hgg_data,  self.data_set_path, self.config.image_shape, samples_num)
         
 
-    def write_image_data_to_file(self, image_files, data_storage, truth_storage, truth_dtype, channels = 4, crop = True):
+    def write_image_data_to_file(self, image_files, data_storage, truth_storage, truth_dtype, channels = 4):
         for set_of_files in os.listdir(image_files):
-            images = self.read_images(f"{image_files}/{set_of_files}", crop = crop)
+            images = self.read_images(f"{image_files}/{set_of_files}")
             subject_data = [image for image in images]
             print("-"*30)
             print(f"Adding {set_of_files}")
@@ -63,8 +63,8 @@ class DataGenerator:
     
 
     # param images_files - path to the mri image folder
-    def read_images(self, path_to_subject, crop = False, new_shape = [80,96,64]):
-
+    def read_images(self, path_to_subject, new_shape = [144,144,144], normalize = False):
+        crop = self.config.is_compress == 1
         index_truth = -1
         subject_sequences = list()  
 
@@ -73,7 +73,6 @@ class DataGenerator:
         for index, sequence in enumerate(paths):
             if "seg" in sequence: 
                 index_truth = index
-            
             
             image = nib.load(f"{path_to_subject}/{sequence}")
             image_matrix = image.get_data()
@@ -88,10 +87,16 @@ class DataGenerator:
 
                 image_matrix = zoom(image_matrix, factors,  mode = "constant")
 
+                # image normalization 
+                if not index_truth == index and normalize:
+                    mean = image_matrix.mean()
+                    std = image_matrix.std() 
+                    print("Done with the normalization")
+                    image_matrix = (image_matrix - mean)/std
+
                 
             subject_sequences.append(image_matrix)
         
-            assert Exception(f"No truth label provided in {path_to_subject}")
         
         last_index = len(paths) - 1
 
@@ -106,6 +111,7 @@ class DataGenerator:
     def normalize_data_storage(self, data_storage):
         means = list()
         stds = list()
+
         for index in range(data_storage.shape[0]):
             data = data_storage[index]
             means.append(data.mean(axis=(1, 2, 3)))
@@ -120,11 +126,11 @@ class DataGenerator:
         return data_storage
 
 
-    def fill_data(self, image_files, out_file, image_shape, samples_num, channels =4, truth_dtype=np.uint8, subject_ids=None, normalize=True):
+    def fill_data(self, image_files, out_file, image_shape, samples_num, channels =4, truth_dtype=np.uint8, subject_ids=None, normalize=False):
 
         
         try: 
-            hdf_file, data_storage, truth_storage, affine_storage = self.create_data_file(out_file, n_samples = samples_num, image_shape = image_shape)
+            hdf_file, data_storage, truth_storage, _ = self.create_data_file(out_file, n_samples = samples_num, image_shape = image_shape)
         except Exception as e: 
             os.remove(out_file)
             raise e
@@ -137,12 +143,18 @@ class DataGenerator:
 
         return out_file
 
-
-
     @staticmethod
     def add_data_to_storage(data_storage, truth_storage, subject_data, channels, truth_dtype):
         data_storage.append(np.asarray(subject_data[:channels])[np.newaxis])
-        truth_storage.append(np.asarray(subject_data[channels], dtype=truth_dtype)[np.newaxis][np.newaxis])
+        
+        # with dtype
+        # truth_storage.append(np.asarray(subject_data[channels], dtype=truth_dtype)[np.newaxis][np.newaxis])
+
+        # without dtype 
+        truth_storage.append(np.asarray(subject_data[channels])[np.newaxis][np.newaxis])
+
+
+
         # affine_storage.append(np.asarray(affine)[np.newaxis])
 
 
